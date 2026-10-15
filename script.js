@@ -9,112 +9,33 @@
      商品数据
      字段：id / 名称 / 分类 / 价格 / 规格 / 卖点 / 成分 / 适用宠物 / 图片 / 月销量
      ------------------------------------------------------------------------ */
-  var CATEGORIES = ['全部', '鸡肉', '冻干', '洁齿', '训练奖励'];
+  // 商品数据由共享数据层提供（后台改完刷新即生效）
+  var products = LH.getProducts();
+  var CATEGORIES = buildCategories();
 
-  var PRODUCTS = [
-    {
-      id: 'cheese-heart-biscuits',
-      name: '羊奶酪酥心饼',
-      category: '训练奖励',
-      price: 32,
-      spec: '90g/盒',
-      point: '奶香轻盈，酥而不硬，适合做居家互动的小奖励。',
-      ingredients: '羊奶酪、米粉、鸡蛋',
-      suitable: '全犬种',
-      sales: 1424,
-      image: 'assets/images/product-cheese-heart-biscuits.jpg'
-    },
-    {
-      id: 'chicken-jerky-strips',
-      name: '原切鸡胸肉条',
-      category: '鸡肉',
-      price: 39,
-      spec: '80g/袋',
-      point: '低温慢烘保留肉香，适合撕成小条做训练奖励。',
-      ingredients: '鸡胸肉',
-      suitable: '全犬种，3 个月以上',
-      sales: 1286,
-      image: 'assets/images/product-chicken-jerky-strips.jpg'
-    },
-    {
-      id: 'salmon-training-bites',
-      name: '三文鱼训练小粒',
-      category: '冻干',
-      price: 42,
-      spec: '70g/袋',
-      point: '小颗粒不粘手，外出训练、召回奖励和嗅闻游戏都顺手。',
-      ingredients: '三文鱼',
-      suitable: '全犬种，猫可作日常奖励',
-      sales: 1180,
-      image: 'assets/images/product-salmon-training-bites.jpg'
-    },
-    {
-      id: 'herbal-dental-chews',
-      name: '草本洁齿咀嚼棒',
-      category: '洁齿',
-      price: 35,
-      spec: '5 支/盒',
-      point: '纤维结构摩擦牙面，日常咬一咬减少牙垢。',
-      ingredients: '马铃薯淀粉、鸡肉、薄荷',
-      suitable: '6 个月以上犬',
-      sales: 1043,
-      image: 'assets/images/product-herbal-dental-chews.jpg'
-    },
-    {
-      id: 'freeze-dried-chicken-cubes',
-      name: '冻干鸡肉粒',
-      category: '冻干',
-      price: 45,
-      spec: '60g/罐',
-      point: '单一原料，掰碎拌粮可提升食欲。',
-      ingredients: '鸡胸肉',
-      suitable: '全犬种、挑食猫',
-      sales: 968,
-      image: 'assets/images/product-freeze-dried-chicken-cubes.jpg'
-    },
-    {
-      id: 'air-dried-duck-slices',
-      name: '风干鸭胸薄片',
-      category: '鸡肉',
-      price: 36,
-      spec: '70g/袋',
-      point: '鸭肉性凉，适合容易上火的毛孩。',
-      ingredients: '鸭胸肉',
-      suitable: '全犬种',
-      sales: 742,
-      image: 'assets/images/product-air-dried-duck-slices.jpg'
-    },
-    {
-      id: 'veggie-cookies',
-      name: '混合蔬果小饼干',
-      category: '训练奖励',
-      price: 29,
-      spec: '100g/盒',
-      point: '南瓜与胡萝卜配色，脆口不油手。',
-      ingredients: '南瓜、胡萝卜、燕麦',
-      suitable: '全犬种',
-      sales: 651,
-      image: 'assets/images/product-veggie-cookies.jpg'
-    },
-    {
-      id: 'dental-soft-strips',
-      name: '牙洁冻干软条',
-      category: '洁齿',
-      price: 33,
-      spec: '90g/袋',
-      point: '柔软好咬，适合牙口一般的老年犬。',
-      ingredients: '鸡胸肉、木糖醇、海藻',
-      suitable: '老年犬',
-      sales: 507,
-      image: 'assets/images/product-dental-soft-strips.jpg'
+  // 筛选条 = 全部 + 商品里实际出现的分类（后台新增分类会自动出现）
+  function buildCategories() {
+    var preferred = ['鸡肉', '冻干', '洁齿', '训练奖励'];
+    var present = [];
+    for (var i = 0; i < products.length; i++) {
+      if (present.indexOf(products[i].category) === -1) present.push(products[i].category);
     }
-  ];
+    var ordered = [];
+    for (var j = 0; j < preferred.length; j++) {
+      if (present.indexOf(preferred[j]) !== -1) ordered.push(preferred[j]);
+    }
+    for (var k = 0; k < present.length; k++) {
+      if (ordered.indexOf(present[k]) === -1) ordered.push(present[k]);
+    }
+    return ['全部'].concat(ordered);
+  }
 
   /* ------------------------------------------------------------------------
      状态与元素引用
      ------------------------------------------------------------------------ */
-  var DEMO_ACCOUNT = { user: 'demo', pass: 'pet123' };
-  var STORE_KEYS = { auth: 'lh.auth', addresses: 'lh.addresses', orders: 'lh.orders' };
+  // 账号与存储键统一由 data.js 提供，前后台保持一致
+  var DEMO_ACCOUNT = LH.DEMO_ACCOUNT;
+  var STORE_KEYS = LH.STORE_KEYS;
   // 这些浮层不响应 Esc、遮罩点击和关闭按钮，只能由代码主动关闭
   var LOCKED_LAYERS = { login: true };
 
@@ -131,6 +52,7 @@
     filters: document.getElementById('filters'),
     grid: document.getElementById('productGrid'),
     gridEmpty: document.getElementById('gridEmpty'),
+    onshelfCount: document.getElementById('onshelfCount'),
     badge: document.getElementById('cartBadge'),
     cartButton: document.getElementById('cartButton'),
     heroCartButton: document.getElementById('heroCartButton'),
@@ -211,8 +133,9 @@
   }
 
   function findProduct(id) {
-    for (var i = 0; i < PRODUCTS.length; i++) {
-      if (PRODUCTS[i].id === id) return PRODUCTS[i];
+    // 不按上架状态过滤：购物车里已加的商品、历史订单里的商品仍要能显示
+    for (var i = 0; i < products.length; i++) {
+      if (products[i].id === id) return products[i];
     }
     return null;
   }
@@ -274,8 +197,11 @@
      渲染：商品网格
      ------------------------------------------------------------------------ */
   function visibleProducts() {
-    if (activeCategory === '全部') return PRODUCTS;
-    return PRODUCTS.filter(function (product) {
+    var onShelf = products.filter(function (product) {
+      return product.status !== 'off';
+    });
+    if (activeCategory === '全部') return onShelf;
+    return onShelf.filter(function (product) {
       return product.category === activeCategory;
     });
   }
@@ -365,6 +291,11 @@
   function renderGrid() {
     var list = visibleProducts();
     el.grid.innerHTML = '';
+
+    if (el.onshelfCount) {
+      var onShelf = products.filter(function (product) { return product.status !== 'off'; });
+      el.onshelfCount.textContent = onShelf.length + ' 款';
+    }
 
     if (!list.length) {
       el.grid.hidden = true;
@@ -547,30 +478,15 @@
      本地存储：身份、收货地址、订单记录
      ------------------------------------------------------------------------ */
   function readStore(key, fallback) {
-    try {
-      var raw = window.localStorage.getItem(key);
-      if (!raw) return fallback;
-      var value = JSON.parse(raw);
-      return value === null || value === undefined ? fallback : value;
-    } catch (error) {
-      return fallback;
-    }
+    return LH.read(key, fallback);
   }
 
   function writeStore(key, value) {
-    try {
-      window.localStorage.setItem(key, JSON.stringify(value));
-    } catch (error) {
-      /* 隐私模式或存储被禁用时静默降级，页面功能不受影响 */
-    }
+    return LH.write(key, value);
   }
 
   function removeStore(key) {
-    try {
-      window.localStorage.removeItem(key);
-    } catch (error) {
-      /* 同上 */
-    }
+    LH.remove(key);
   }
 
   var auth = readStore(STORE_KEYS.auth, null);
@@ -688,6 +604,7 @@
     var items = cart.map(function (line) {
       var product = findProduct(line.id);
       return {
+        id: line.id,
         name: product ? product.name : line.id,
         qty: line.qty,
         price: product ? product.price : 0
@@ -696,6 +613,7 @@
     orders.unshift({
       number: number,
       createdAt: Date.now(),
+      buyer: auth ? auth.name : '游客',
       count: cartCount(),
       total: cartTotal(),
       items: items,

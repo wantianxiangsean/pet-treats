@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>岚禾小食 · 管理后台</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">跳到主要内容</a>
+
+  <header class="topbar" id="top">
+    <div class="topbar__inner">
+      <a class="brand" href="#top">
+        <span class="brand__mark" aria-hidden="true">LH</span>
+        <span class="brand__text">
+          <strong>岚禾小食</strong>
+          <small>ADMIN CONSOLE</small>
+        </span>
+      </a>
+
+      <nav class="admin-tabs" aria-label="后台分区">
+        <button class="admin-tab is-active" type="button" data-panel="overview" aria-pressed="true">概览</button>
+        <button class="admin-tab" type="button" data-panel="products" aria-pressed="false">商品</button>
+        <button class="admin-tab" type="button" data-panel="orders" aria-pressed="false">订单</button>
+      </nav>
+
+      <div class="admin-actions">
+        <span class="identity" data-mode="member">
+          <span class="identity__avatar" aria-hidden="true">A</span>
+          <span class="identity__name" id="adminName">admin</span>
+        </span>
+        <button class="btn btn--ghost btn--sm" id="logoutButton" type="button">退出登录</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="admin-panel is-active" id="panel-overview" aria-labelledby="overviewTitle">
+      <div class="admin-head">
+        <div>
+          <h2 id="overviewTitle">经营概览</h2>
+          <p class="admin-head__sub">
+            统计口径：本机真实订单 + 后台虚拟演示订单。订单只读，不做状态流转。
+          </p>
+        </div>
+        <button class="btn btn--ghost btn--sm" id="resetButton" type="button">重置演示数据</button>
+      </div>
+
+      <div class="stat-grid">
+        <article class="stat-card">
+          <span class="stat-card__label">总营业额</span>
+          <strong class="stat-card__value" id="statRevenue">¥0</strong>
+          <span class="stat-card__note">全部订单合计</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-card__label">订单数</span>
+          <strong class="stat-card__value" id="statOrders">0</strong>
+          <span class="stat-card__note">其中虚拟 <span id="statSample">0</span> 条</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-card__label">平均客单价</span>
+          <strong class="stat-card__value" id="statAvg">¥0</strong>
+          <span class="stat-card__note">总营业额 ÷ 订单数</span>
+        </article>
+        <article class="stat-card">
+          <span class="stat-card__label">在售商品</span>
+          <strong class="stat-card__value" id="statOnShelf">0</strong>
+          <span class="stat-card__note">下架商品不出现在前台</span>
+        </article>
+      </div>
+
+      <div class="admin-card">
+        <div class="admin-card__head">
+          <h3>商品销量排行</h3>
+          <span class="admin-note">销量来自订单明细，与商品表里的「月销量」不是同一口径</span>
+        </div>
+        <div class="rank-list" id="rankList"></div>
+      </div>
+
+      <div class="admin-card">
+        <div class="admin-card__head">
+          <h3>商品明细</h3>
+          <span class="admin-note">共售出 <span id="statQty">0</span> 件</span>
+        </div>
+        <div class="table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th scope="col">商品</th>
+                <th scope="col">销量</th>
+                <th scope="col">销售额</th>
+                <th scope="col">销量占比</th>
+              </tr>
+            </thead>
+            <tbody id="statTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="admin-panel" id="panel-products" aria-labelledby="productsTitle" hidden>
+      <div class="admin-head">
+        <div>
+          <h2 id="productsTitle">商品管理</h2>
+          <p class="admin-head__sub">
+            上架与编辑即时保存，前台刷新后生效。只做上架/下架，不做物理删除，历史订单里的商品快照不受影响。
+          </p>
+        </div>
+        <button class="btn btn--primary" id="addProductButton" type="button">新增商品</button>
+      </div>
+
+      <div class="table-wrap">
+        <table class="admin-table admin-table--products">
+          <thead>
+            <tr>
+              <th scope="col">商品</th>
+              <th scope="col">分类</th>
+              <th scope="col">价格</th>
+              <th scope="col">规格</th>
+              <th scope="col">月销量</th>
+              <th scope="col">状态</th>
+              <th scope="col">操作</th>
+            </tr>
+          </thead>
+          <tbody id="productTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="admin-panel" id="panel-orders" aria-labelledby="ordersTitle" hidden>
+      <div class="admin-head">
+        <div>
+          <h2 id="ordersTitle">订单列表</h2>
+          <p class="admin-head__sub">
+            共 <strong id="orderTotal">0</strong> 条，其中虚拟 <strong id="orderSample">0</strong> 条。按时间倒序，只读。
+          </p>
+        </div>
+      </div>
+      <div class="order-list" id="adminOrderList"></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer__inner">
+      <div class="footer__brand">
+        <span class="brand__mark" aria-hidden="true">LH</span>
+        <div>
+          <strong>岚禾小食 · 管理后台</strong>
+          <small>ADMIN CONSOLE</small>
+        </div>
+      </div>
+      <p class="footer__note">
+        演示后台：数据存在本机浏览器，管理员账号写在前端，不具备真实的安全性。
+      </p>
+      <p class="footer__copy">© 2026 岚禾小食</p>
+    </div>
+  </footer>
+
+  <div class="overlay" id="overlay" hidden></div>
+
+  <div class="dialog dialog--login" id="adminLoginDialog" role="dialog" aria-modal="true" aria-labelledby="adminLoginTitle" hidden>
+    <span class="login__mark" aria-hidden="true">LH</span>
+    <h2 id="adminLoginTitle">管理后台</h2>
+    <p class="login__sub">请使用管理员账号登录，查看订单与商品数据。</p>
+    <form class="form" id="adminLoginForm" novalidate>
+      <div class="field">
+        <label class="field__label" for="adminUser">账号</label>
+        <input class="input" id="adminUser" type="text" autocomplete="username" placeholder="admin">
+        <p class="field__error" id="adminUserError" hidden></p>
+      </div>
+      <div class="field">
+        <label class="field__label" for="adminPass">密码</label>
+        <input class="input" id="adminPass" type="password" autocomplete="current-password" placeholder="pet888">
+        <p class="field__error" id="adminPassError" hidden></p>
+      </div>
+      <p class="form__error" id="adminLoginError" role="alert" hidden></p>
+      <button class="btn btn--primary btn--block" type="submit">登录后台</button>
+    </form>
+    <p class="login__hint">演示管理员：<strong>admin</strong> / <strong>pet888</strong>，仅用于演示。</p>
+  </div>
+
+  <div class="dialog dialog--product" id="productDialog" role="dialog" aria-modal="true" aria-labelledby="productDialogTitle" hidden>
+    <button class="icon-button dialog__close" type="button" data-close aria-label="关闭商品表单">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+    </button>
+    <h2 id="productDialogTitle">新增商品</h2>
+    <p class="address__sub" id="productDialogSub">保存后会立即写入商品数据，前台刷新即可看到。</p>
+
+    <form class="form" id="productForm" novalidate>
+      <div class="field">
+        <label class="field__label" for="pName">商品名称</label>
+        <input class="input" id="pName" type="text" maxlength="30" placeholder="如：羊奶酪酥心饼">
+        <p class="field__error" id="pNameError" hidden></p>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label class="field__label" for="pCategory">分类</label>
+          <input class="input" id="pCategory" type="text" list="categoryOptions" maxlength="10" placeholder="鸡肉 / 冻干 / 洁齿 / 训练奖励">
+          <datalist id="categoryOptions"></datalist>
+          <p class="field__error" id="pCategoryError" hidden></p>
+        </div>
+        <div class="field">
+          <label class="field__label" for="pPrice">价格（元）</label>
+          <input class="input" id="pPrice" type="number" min="0" step="1" placeholder="32">
+          <p class="field__error" id="pPriceError" hidden></p>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label class="field__label" for="pSpec">规格</label>
+          <input class="input" id="pSpec" type="text" maxlength="20" placeholder="90g/盒">
+          <p class="field__error" id="pSpecError" hidden></p>
+        </div>
+        <div class="field">
+          <label class="field__label" for="pSales">月销量</label>
+          <input class="input" id="pSales" type="number" min="0" step="1" placeholder="0">
+          <p class="field__error" id="pSalesError" hidden></p>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="pPoint">卖点</label>
+        <input class="input" id="pPoint" type="text" maxlength="50" placeholder="一句话说明它好在哪里">
+        <p class="field__error" id="pPointError" hidden></p>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label class="field__label" for="pIngredients">主要成分</label>
+          <input class="input" id="pIngredients" type="text" maxlength="40" placeholder="鸡胸肉">
+          <p class="field__error" id="pIngredientsError" hidden></p>
+        </div>
+        <div class="field">
+          <label class="field__label" for="pSuitable">适用宠物</label>
+          <input class="input" id="pSuitable" type="text" maxlength="30" placeholder="全犬种">
+          <p class="field__error" id="pSuitableError" hidden></p>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="field__label">商品图片</span>
+        <div class="image-picker">
+          <img class="image-picker__preview" id="pPreview" alt="商品图片预览">
+          <div class="image-picker__actions">
+            <label class="btn btn--ghost btn--sm" for="pImageFile">本机选图</label>
+            <input class="visually-hidden" id="pImageFile" type="file" accept="image/*">
+            <select class="input input--select" id="pImagePreset" aria-label="从现有素材选择">
+              <option value="">或从现有素材里选…</option>
+            </select>
+          </div>
+        </div>
+        <p class="field__hint">选图后会自动压缩到长边 800px 以内再保存，避免占满浏览器存储。</p>
+        <p class="field__error" id="pImageError" hidden></p>
+      </div>
+
+      <label class="checkbox">
+        <input type="checkbox" id="pStatus" checked>
+        <span>上架（取消勾选即为下架，前台不再展示）</span>
+      </label>
+
+      <div class="form__actions">
+        <button class="btn btn--ghost" type="button" data-close>取消</button>
+        <button class="btn btn--primary" id="productSubmit" type="submit">保存商品</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="data.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
