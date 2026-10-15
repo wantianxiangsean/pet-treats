@@ -869,3 +869,275 @@ button {
   .card:hover { transform: none; }
   .card:hover .card__media img { transform: none; }
 }
+
+/* ==========================================================================
+   登录、身份与账单中心
+   ========================================================================== */
+.topbar__inner { position: relative; }
+
+.topnav__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  transition: background-color .2s var(--ease), color .2s var(--ease);
+}
+.topnav__button .icon { width: 18px; height: 18px; }
+.topnav__button:hover { background: var(--sand); color: var(--green); }
+
+.identity {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  padding: 0 var(--space-3) 0 3px;
+  border-radius: var(--radius-pill);
+  color: var(--ink-soft);
+  transition: background-color .2s var(--ease), color .2s var(--ease);
+}
+.identity:hover { background: var(--sand); color: var(--ink); }
+.identity__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: var(--radius-pill);
+  background: var(--green);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+.identity[data-mode="guest"] .identity__avatar { background: var(--sand); color: var(--ink-soft); }
+.identity__name { font-size: 14px; font-weight: 600; }
+
+.identity-menu {
+  position: absolute;
+  top: calc(100% - 2px);
+  right: var(--space-6);
+  z-index: 35;
+  min-width: 152px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: var(--shadow-float);
+}
+.identity-menu__item {
+  display: block;
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 8px;
+  text-align: left;
+  font-size: 14px;
+  color: var(--ink);
+  transition: background-color .2s var(--ease);
+}
+.identity-menu__item:hover { background: var(--sand); }
+
+/* 登录浮窗背后加一层虚化 */
+.overlay.is-blurred {
+  background: rgba(31, 36, 33, .34);
+  backdrop-filter: blur(16px) saturate(1.04);
+  -webkit-backdrop-filter: blur(16px) saturate(1.04);
+}
+
+.btn--sm { min-height: 36px; padding: 0 var(--space-4); font-size: 13px; }
+
+/* 表单 */
+.form { display: flex; flex-direction: column; gap: var(--space-4); text-align: left; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field__label { font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+.field__error { color: var(--berry); font-size: 12.5px; }
+.form__error {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(178, 58, 90, .08);
+  color: var(--berry);
+  font-size: 13px;
+}
+.form__actions { display: flex; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-2); }
+.checkbox { display: inline-flex; align-items: center; gap: var(--space-2); font-size: 14px; color: var(--ink-soft); cursor: pointer; }
+.checkbox input { width: 18px; height: 18px; accent-color: var(--green); cursor: pointer; }
+
+.input {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  transition: border-color .2s var(--ease), box-shadow .2s var(--ease);
+}
+.input::placeholder { color: var(--ink-mute); }
+.input:focus {
+  outline: none;
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(47, 74, 60, .12);
+}
+.input.is-invalid { border-color: var(--berry); box-shadow: 0 0 0 3px rgba(178, 58, 90, .12); }
+.input--area { min-height: 78px; padding-top: 12px; line-height: 1.6; resize: vertical; }
+
+/* 登录 */
+.dialog--login {
+  width: min(420px, calc(100% - 48px));
+  padding: var(--space-7) var(--space-6) var(--space-6);
+  text-align: center;
+}
+.login__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: var(--space-5);
+  border-radius: var(--radius-pill);
+  background: var(--green);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+.dialog--login h2 { font-size: 22px; font-weight: 700; }
+.login__sub { margin-top: var(--space-3); color: var(--ink-soft); font-size: 14px; }
+.dialog--login .form { margin-top: var(--space-6); }
+.dialog--login .btn--ghost { margin-top: var(--space-3); }
+.login__hint { margin-top: var(--space-5); color: var(--ink-mute); font-size: 12.5px; }
+.login__hint strong { color: var(--ink-soft); }
+
+/* 账单中心 */
+.dialog--billing {
+  width: min(720px, calc(100% - 48px));
+  padding: var(--space-7) var(--space-6) var(--space-6);
+}
+.billing__head h2 { font-size: 22px; font-weight: 700; }
+.billing__sub { margin-top: var(--space-2); color: var(--ink-soft); font-size: 14px; }
+.billing__section { margin-top: var(--space-6); padding-top: var(--space-5); border-top: 1px solid var(--line); }
+.billing__section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+.billing__section-head h3 { font-size: 16px; font-weight: 700; }
+
+.address-list, .order-list { display: grid; gap: var(--space-3); }
+
+.address-card {
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--card);
+}
+.address-card.is-default { border-color: var(--green); box-shadow: 0 0 0 3px rgba(47, 74, 60, .06); }
+.address-card__top { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-3); }
+.address-card__name { font-size: 15px; font-weight: 700; }
+.address-card__phone { color: var(--ink-soft); font-size: 14px; font-variant-numeric: tabular-nums; }
+.address-card__text { margin-top: var(--space-2); color: var(--ink-soft); font-size: 14px; }
+.address-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 600;
+}
+.badge--default { background: rgba(47, 74, 60, .1); color: var(--green); }
+
+.link-button { color: var(--green); font-size: 13px; font-weight: 600; }
+.link-button:hover { text-decoration: underline; }
+.link-button--danger { color: var(--berry); }
+.link-button[disabled] { color: var(--ink-mute); cursor: default; text-decoration: none; }
+
+.order-card {
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--card);
+}
+.order-card__top { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
+.order-card__number { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.order-card__time { color: var(--ink-mute); font-size: 12.5px; }
+.order-card__meta { margin-top: var(--space-2); color: var(--ink-soft); font-size: 13.5px; }
+.order-card__items { margin-top: var(--space-2); color: var(--ink-mute); font-size: 13px; }
+.order-card__total { color: var(--berry); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.empty-state {
+  padding: var(--space-6) var(--space-4);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-card);
+  background: var(--card);
+  color: var(--ink-soft);
+  font-size: 14px;
+  text-align: center;
+}
+
+/* 地址表单 */
+.dialog--address {
+  width: min(520px, calc(100% - 48px));
+  padding: var(--space-7) var(--space-6) var(--space-6);
+}
+.dialog--address h2 { font-size: 20px; font-weight: 700; }
+.address__sub { margin: var(--space-2) 0 var(--space-5); color: var(--ink-soft); font-size: 14px; }
+
+/* 需要登录的提示 */
+.dialog--notice {
+  width: min(400px, calc(100% - 48px));
+  padding: var(--space-7) var(--space-6) var(--space-6);
+  text-align: center;
+}
+.notice__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-pill);
+  background: rgba(178, 58, 90, .08);
+  color: var(--berry);
+}
+.notice__mark .icon { width: 26px; height: 26px; }
+.dialog--notice h2 { font-size: 20px; font-weight: 700; }
+.notice__note { margin-top: var(--space-3); color: var(--ink-soft); font-size: 14.5px; }
+.notice__actions { display: flex; justify-content: center; gap: var(--space-3); margin-top: var(--space-6); }
+
+.success__addr { margin-top: var(--space-2); color: var(--ink-soft); font-size: 13.5px; }
+
+@media (max-width: 640px) {
+  .topnav__link.topnav__button { display: inline-flex; }
+  .topnav__label { display: none; }
+  .identity { padding: 0 3px; }
+  .identity__name { display: none; }
+  .identity-menu { right: var(--space-5); }
+
+  .dialog--login,
+  .dialog--notice,
+  .dialog--address,
+  .dialog--billing {
+    width: calc(100% - 24px);
+    padding: var(--space-6) var(--space-5);
+  }
+  .dialog--billing { max-height: 88vh; overflow: auto; }
+
+  .form__actions, .notice__actions { flex-direction: column-reverse; }
+  .form__actions .btn, .notice__actions .btn { width: 100%; }
+  .billing__section-head { flex-wrap: wrap; }
+  .address-card__actions { gap: var(--space-4); }
+}

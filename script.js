@@ -113,10 +113,19 @@
   /* ------------------------------------------------------------------------
      状态与元素引用
      ------------------------------------------------------------------------ */
+  var DEMO_ACCOUNT = { user: 'demo', pass: 'pet123' };
+  var STORE_KEYS = { auth: 'lh.auth', addresses: 'lh.addresses', orders: 'lh.orders' };
+  // 这些浮层不响应 Esc、遮罩点击和关闭按钮，只能由代码主动关闭
+  var LOCKED_LAYERS = { login: true };
+
   var activeCategory = '全部';
-  var cart = [];          // [{ id, qty }]
-  var openLayer = null;    // 'cart' | 'detail' | 'success'
+  var cart = [];           // [{ id, qty }]
+  var openLayer = null;    // 'cart' | 'detail' | 'success' | 'login' | 'billing' | 'address' | 'notice'
+  var openNode = null;
   var lastFocused = null;
+  var pendingAction = null;      // 登录后要接着做的事：'checkout' | 'billing' | null
+  var editingAddressId = null;
+  var addressFormOrigin = null;  // 'checkout' | 'billing'
 
   var el = {
     filters: document.getElementById('filters'),
@@ -145,7 +154,46 @@
     detailAdd: document.getElementById('detailAdd'),
     successDialog: document.getElementById('successDialog'),
     orderNumber: document.getElementById('orderNumber'),
+    successAddress: document.getElementById('successAddress'),
     successClose: document.getElementById('successClose'),
+    billingButton: document.getElementById('billingButton'),
+    identityButton: document.getElementById('identityButton'),
+    identityAvatar: document.getElementById('identityAvatar'),
+    identityName: document.getElementById('identityName'),
+    identityMenu: document.getElementById('identityMenu'),
+    identityMenuLogin: document.getElementById('identityMenuLogin'),
+    identityMenuBilling: document.getElementById('identityMenuBilling'),
+    identityMenuLogout: document.getElementById('identityMenuLogout'),
+    loginDialog: document.getElementById('loginDialog'),
+    loginForm: document.getElementById('loginForm'),
+    loginUser: document.getElementById('loginUser'),
+    loginPass: document.getElementById('loginPass'),
+    loginUserError: document.getElementById('loginUserError'),
+    loginPassError: document.getElementById('loginPassError'),
+    loginError: document.getElementById('loginError'),
+    guestButton: document.getElementById('guestButton'),
+    billingDialog: document.getElementById('billingDialog'),
+    addressList: document.getElementById('addressList'),
+    orderList: document.getElementById('orderList'),
+    addAddressButton: document.getElementById('addAddressButton'),
+    addressDialog: document.getElementById('addressDialog'),
+    addressForm: document.getElementById('addressForm'),
+    addressTitle: document.getElementById('addressTitle'),
+    addressSub: document.getElementById('addressSub'),
+    addressSubmit: document.getElementById('addressSubmit'),
+    addrName: document.getElementById('addrName'),
+    addrPhone: document.getElementById('addrPhone'),
+    addrRegion: document.getElementById('addrRegion'),
+    addrDetail: document.getElementById('addrDetail'),
+    addrDefault: document.getElementById('addrDefault'),
+    addrNameError: document.getElementById('addrNameError'),
+    addrPhoneError: document.getElementById('addrPhoneError'),
+    addrRegionError: document.getElementById('addrRegionError'),
+    addrDetailError: document.getElementById('addrDetailError'),
+    noticeDialog: document.getElementById('noticeDialog'),
+    noticeNote: document.getElementById('noticeNote'),
+    noticeLogin: document.getElementById('noticeLogin'),
+    noticeCancel: document.getElementById('noticeCancel'),
     toast: document.getElementById('toast')
   };
 
@@ -496,53 +544,643 @@
   }
 
   /* ------------------------------------------------------------------------
+     本地存储：身份、收货地址、订单记录
+     ------------------------------------------------------------------------ */
+  function readStore(key, fallback) {
+    try {
+      var raw = window.localStorage.getItem(key);
+      if (!raw) return fallback;
+      var value = JSON.parse(raw);
+      return value === null || value === undefined ? fallback : value;
+    } catch (error) {
+      return fallback;
+    }
+  }
+
+  function writeStore(key, value) {
+    try {
+      window.localStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+      /* 隐私模式或存储被禁用时静默降级，页面功能不受影响 */
+    }
+  }
+
+  function removeStore(key) {
+    try {
+      window.localStorage.removeItem(key);
+    } catch (error) {
+      /* 同上 */
+    }
+  }
+
+  var auth = readStore(STORE_KEYS.auth, null);
+  var addresses = readStore(STORE_KEYS.addresses, []);
+  var orders = readStore(STORE_KEYS.orders, []);
+
+  function isMember() {
+    return !!auth && auth.mode === 'member';
+  }
+
+  function maskPhone(phone) {
+    return String(phone).replace(/^(\d{3})\d{4}(\d{4})$/, '$1****$2');
+  }
+
+  function formatTime(stamp) {
+    var date = new Date(stamp);
+    function pad(value) { return String(value).padStart(2, '0'); }
+    return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) +
+      ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes());
+  }
+
+  function saveAuth(mode, name) {
+    auth = { mode: mode, name: name };
+    writeStore(STORE_KEYS.auth, auth);
+    renderIdentity();
+  }
+
+  function signOut() {
+    auth = null;
+    removeStore(STORE_KEYS.auth);
+    pendingAction = null;
+    renderIdentity();
+    closeLayers(true);
+    showToast('已退出登录');
+    openLogin();
+  }
+
+  /* ---- 收货地址 ---- */
+  function findAddress(id) {
+    for (var i = 0; i < addresses.length; i++) {
+      if (addresses[i].id === id) return addresses[i];
+    }
+    return null;
+  }
+
+  function defaultAddress() {
+    for (var i = 0; i < addresses.length; i++) {
+      if (addresses[i].isDefault) return addresses[i];
+    }
+    return addresses.length ? addresses[0] : null;
+  }
+
+  function makeAddressId() {
+    return 'addr-' + Date.now().toString(36) + '-' + Math.floor(Math.random() * 1679616).toString(36);
+  }
+
+  function persistAddresses() {
+    // 始终保证「有且只有一条默认地址」
+    var seenDefault = false;
+    for (var i = 0; i < addresses.length; i++) {
+      if (!addresses[i].isDefault) continue;
+      if (seenDefault) addresses[i].isDefault = false;
+      else seenDefault = true;
+    }
+    if (!seenDefault && addresses.length) addresses[0].isDefault = true;
+    writeStore(STORE_KEYS.addresses, addresses);
+  }
+
+  function saveAddress(data, id) {
+    if (id) {
+      var target = findAddress(id);
+      if (!target) return;
+      target.name = data.name;
+      target.phone = data.phone;
+      target.region = data.region;
+      target.detail = data.detail;
+      if (data.isDefault) {
+        for (var i = 0; i < addresses.length; i++) addresses[i].isDefault = false;
+        target.isDefault = true;
+      } else if (addresses.length === 1) {
+        // 只有一条地址时不允许取消默认，否则下单会没有可用地址
+        target.isDefault = true;
+      }
+    } else {
+      var item = {
+        id: makeAddressId(),
+        name: data.name,
+        phone: data.phone,
+        region: data.region,
+        detail: data.detail,
+        isDefault: data.isDefault || addresses.length === 0
+      };
+      if (item.isDefault) {
+        for (var j = 0; j < addresses.length; j++) addresses[j].isDefault = false;
+      }
+      addresses.push(item);
+    }
+    persistAddresses();
+  }
+
+  function deleteAddress(id) {
+    addresses = addresses.filter(function (item) { return item.id !== id; });
+    persistAddresses();
+  }
+
+  function makeDefaultAddress(id) {
+    for (var i = 0; i < addresses.length; i++) {
+      addresses[i].isDefault = addresses[i].id === id;
+    }
+    writeStore(STORE_KEYS.addresses, addresses);
+  }
+
+  /* ---- 订单记录 ---- */
+  function recordOrder(number, address) {
+    var items = cart.map(function (line) {
+      var product = findProduct(line.id);
+      return {
+        name: product ? product.name : line.id,
+        qty: line.qty,
+        price: product ? product.price : 0
+      };
+    });
+    orders.unshift({
+      number: number,
+      createdAt: Date.now(),
+      count: cartCount(),
+      total: cartTotal(),
+      items: items,
+      // 存快照：之后改地址不会影响历史订单
+      address: address ? {
+        name: address.name,
+        phone: address.phone,
+        region: address.region,
+        detail: address.detail
+      } : null
+    });
+    writeStore(STORE_KEYS.orders, orders);
+  }
+
+  /* ---- 身份展示 ---- */
+  function renderIdentity() {
+    var member = isMember();
+    el.identityButton.dataset.mode = member ? 'member' : 'guest';
+    el.identityAvatar.textContent = member ? (auth.name || '会').charAt(0).toUpperCase() : '游';
+    el.identityName.textContent = member ? auth.name : '游客';
+    el.identityMenuLogin.hidden = member;
+    el.identityMenuBilling.hidden = !member;
+    el.identityMenuLogout.hidden = !member;
+    closeIdentityMenu();
+  }
+
+  function closeIdentityMenu() {
+    el.identityMenu.hidden = true;
+    el.identityButton.setAttribute('aria-expanded', 'false');
+  }
+
+  function toggleIdentityMenu() {
+    if (el.identityMenu.hidden) {
+      el.identityMenu.hidden = false;
+      el.identityButton.setAttribute('aria-expanded', 'true');
+    } else {
+      closeIdentityMenu();
+    }
+  }
+
+  /* ------------------------------------------------------------------------
+     账单中心
+     ------------------------------------------------------------------------ */
+  function buildLinkButton(label, action, disabled, danger) {
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'link-button' + (danger ? ' link-button--danger' : '');
+    button.dataset.action = action;
+    button.textContent = label;
+    if (disabled) button.disabled = true;
+    return button;
+  }
+
+  function buildAddressCard(address) {
+    var card = document.createElement('article');
+    card.className = 'address-card' + (address.isDefault ? ' is-default' : '');
+    card.dataset.id = address.id;
+
+    var top = document.createElement('div');
+    top.className = 'address-card__top';
+
+    var name = document.createElement('span');
+    name.className = 'address-card__name';
+    name.textContent = address.name;
+
+    var phone = document.createElement('span');
+    phone.className = 'address-card__phone';
+    phone.textContent = maskPhone(address.phone);
+
+    top.appendChild(name);
+    top.appendChild(phone);
+    if (address.isDefault) {
+      var badge = document.createElement('span');
+      badge.className = 'badge badge--default';
+      badge.textContent = '默认';
+      top.appendChild(badge);
+    }
+
+    var text = document.createElement('p');
+    text.className = 'address-card__text';
+    text.textContent = address.region + ' ' + address.detail;
+
+    var actions = document.createElement('div');
+    actions.className = 'address-card__actions';
+    actions.appendChild(buildLinkButton('设为默认', 'default', address.isDefault, false));
+    actions.appendChild(buildLinkButton('编辑', 'edit', false, false));
+    actions.appendChild(buildLinkButton('删除', 'delete', false, true));
+
+    card.appendChild(top);
+    card.appendChild(text);
+    card.appendChild(actions);
+    return card;
+  }
+
+  function renderAddressList() {
+    el.addressList.innerHTML = '';
+    if (!addresses.length) {
+      var empty = document.createElement('p');
+      empty.className = 'empty-state';
+      empty.textContent = '还没有收货地址，点右上角「新增地址」添加一个。';
+      el.addressList.appendChild(empty);
+      return;
+    }
+    var fragment = document.createDocumentFragment();
+    addresses.forEach(function (address) {
+      fragment.appendChild(buildAddressCard(address));
+    });
+    el.addressList.appendChild(fragment);
+  }
+
+  function buildOrderCard(order) {
+    var card = document.createElement('article');
+    card.className = 'order-card';
+
+    var top = document.createElement('div');
+    top.className = 'order-card__top';
+    var number = document.createElement('span');
+    number.className = 'order-card__number';
+    number.textContent = order.number;
+    var time = document.createElement('span');
+    time.className = 'order-card__time';
+    time.textContent = formatTime(order.createdAt);
+    top.appendChild(number);
+    top.appendChild(time);
+
+    var meta = document.createElement('p');
+    meta.className = 'order-card__meta';
+    meta.appendChild(document.createTextNode('共 ' + order.count + ' 件 · 合计 '));
+    var total = document.createElement('strong');
+    total.className = 'order-card__total';
+    total.textContent = formatPrice(order.total);
+    meta.appendChild(total);
+
+    var items = document.createElement('p');
+    items.className = 'order-card__items';
+    items.textContent = '商品：' + order.items.map(function (item) {
+      return item.name + ' ×' + item.qty;
+    }).join('、');
+
+    card.appendChild(top);
+    card.appendChild(meta);
+    card.appendChild(items);
+
+    if (order.address) {
+      var line = document.createElement('p');
+      line.className = 'order-card__items';
+      line.textContent = '收货：' + order.address.name + ' ' + maskPhone(order.address.phone) +
+        ' · ' + order.address.region + ' ' + order.address.detail;
+      card.appendChild(line);
+    }
+    return card;
+  }
+
+  function renderOrderList() {
+    el.orderList.innerHTML = '';
+    if (!orders.length) {
+      var empty = document.createElement('p');
+      empty.className = 'empty-state';
+      empty.textContent = '还没有订单记录，下单成功后会自动记在这里。';
+      el.orderList.appendChild(empty);
+      return;
+    }
+    var fragment = document.createDocumentFragment();
+    orders.forEach(function (order) {
+      fragment.appendChild(buildOrderCard(order));
+    });
+    el.orderList.appendChild(fragment);
+  }
+
+  function renderBilling() {
+    renderAddressList();
+    renderOrderList();
+  }
+
+  function openBilling() {
+    if (!isMember()) {
+      requestLogin('billing');
+      return;
+    }
+    if (!addresses.length) {
+      // 已登录但一条地址都没有：进来就直接让 ta 填
+      openAddressForm('billing');
+      return;
+    }
+    renderBilling();
+    presentLayer(el.billingDialog, 'billing');
+  }
+
+  /* ------------------------------------------------------------------------
+     地址表单
+     ------------------------------------------------------------------------ */
+  function setFieldError(input, node, message) {
+    if (message) {
+      node.textContent = message;
+      node.hidden = false;
+      input.classList.add('is-invalid');
+    } else {
+      node.textContent = '';
+      node.hidden = true;
+      input.classList.remove('is-invalid');
+    }
+  }
+
+  function clearAddressErrors() {
+    setFieldError(el.addrName, el.addrNameError, '');
+    setFieldError(el.addrPhone, el.addrPhoneError, '');
+    setFieldError(el.addrRegion, el.addrRegionError, '');
+    setFieldError(el.addrDetail, el.addrDetailError, '');
+  }
+
+  function openAddressForm(origin, id) {
+    addressFormOrigin = origin || 'billing';
+    editingAddressId = id || null;
+    var target = id ? findAddress(id) : null;
+
+    el.addressForm.reset();
+    el.addressTitle.textContent = target ? '编辑收货地址' : '填写收货地址';
+    el.addressSub.textContent = addressFormOrigin === 'checkout'
+      ? '下单前需要一个收货地址，保存后会继续完成这笔订单。'
+      : '可以保存多个地址，下单时默认用标记为「默认」的那一个。';
+    el.addressSubmit.textContent = target ? '保存修改' : '保存地址';
+
+    el.addrName.value = target ? target.name : '';
+    el.addrPhone.value = target ? target.phone : '';
+    el.addrRegion.value = target ? target.region : '';
+    el.addrDetail.value = target ? target.detail : '';
+    el.addrDefault.checked = target ? !!target.isDefault : addresses.length === 0;
+
+    clearAddressErrors();
+    presentLayer(el.addressDialog, 'address');
+  }
+
+  function handleAddressSubmit(event) {
+    event.preventDefault();
+
+    var data = {
+      name: el.addrName.value.trim(),
+      phone: el.addrPhone.value.trim(),
+      region: el.addrRegion.value.trim(),
+      detail: el.addrDetail.value.trim(),
+      isDefault: el.addrDefault.checked
+    };
+    var ok = true;
+
+    if (!data.name) {
+      setFieldError(el.addrName, el.addrNameError, '请填写收货人');
+      ok = false;
+    } else {
+      setFieldError(el.addrName, el.addrNameError, '');
+    }
+
+    if (!data.phone) {
+      setFieldError(el.addrPhone, el.addrPhoneError, '请填写手机号');
+      ok = false;
+    } else if (!/^1\d{10}$/.test(data.phone)) {
+      setFieldError(el.addrPhone, el.addrPhoneError, '手机号格式不对，应为 1 开头的 11 位数字');
+      ok = false;
+    } else {
+      setFieldError(el.addrPhone, el.addrPhoneError, '');
+    }
+
+    if (!data.region) {
+      setFieldError(el.addrRegion, el.addrRegionError, '请填写省市区');
+      ok = false;
+    } else {
+      setFieldError(el.addrRegion, el.addrRegionError, '');
+    }
+
+    if (!data.detail) {
+      setFieldError(el.addrDetail, el.addrDetailError, '请填写详细地址');
+      ok = false;
+    } else {
+      setFieldError(el.addrDetail, el.addrDetailError, '');
+    }
+
+    if (!ok) return;
+
+    saveAddress(data, editingAddressId);
+    var origin = addressFormOrigin;
+    addressFormOrigin = null;
+    editingAddressId = null;
+    showToast('地址已保存');
+
+    if (origin === 'checkout') {
+      completeOrder();
+    } else {
+      renderBilling();
+      presentLayer(el.billingDialog, 'billing');
+    }
+  }
+
+  /* ------------------------------------------------------------------------
+     登录与游客
+     ------------------------------------------------------------------------ */
+  function openLogin() {
+    el.loginError.hidden = true;
+    presentLayer(el.loginDialog, 'login');
+  }
+
+  function requestLogin(action) {
+    pendingAction = action || null;
+    el.noticeNote.textContent = action === 'billing'
+      ? '登录后才能使用账单中心，管理收货地址与订单记录。'
+      : '登录后才能下单并填写收货地址。';
+    presentLayer(el.noticeDialog, 'notice');
+  }
+
+  function enterAsGuest() {
+    saveAuth('guest', '游客');
+    pendingAction = null;
+    closeLayers(true);
+    showToast('已进入游客模式：可以浏览和加购，下单前需要登录');
+  }
+
+  function handleLogin(event) {
+    event.preventDefault();
+
+    var user = el.loginUser.value.trim();
+    var pass = el.loginPass.value;
+    var ok = true;
+
+    el.loginError.hidden = true;
+
+    if (!user) {
+      setFieldError(el.loginUser, el.loginUserError, '请输入账号');
+      ok = false;
+    } else {
+      setFieldError(el.loginUser, el.loginUserError, '');
+    }
+
+    if (!pass) {
+      setFieldError(el.loginPass, el.loginPassError, '请输入密码');
+      ok = false;
+    } else {
+      setFieldError(el.loginPass, el.loginPassError, '');
+    }
+
+    if (!ok) return;
+
+    if (user !== DEMO_ACCOUNT.user || pass !== DEMO_ACCOUNT.pass) {
+      el.loginError.textContent = '账号或密码不对。本页演示账号为 demo / pet123。';
+      el.loginError.hidden = false;
+      el.loginPass.select();   // 不清空输入，直接选中方便重填
+      return;
+    }
+
+    saveAuth('member', DEMO_ACCOUNT.user);
+    el.loginPass.value = '';
+    resumePending();
+  }
+
+  function resumePending() {
+    var action = pendingAction;
+    pendingAction = null;
+
+    if (action === 'checkout') {
+      if (!addresses.length) {
+        openAddressForm('checkout');
+      } else {
+        completeOrder();
+      }
+      return;
+    }
+    if (action === 'billing') {
+      renderBilling();
+      presentLayer(el.billingDialog, 'billing');
+      return;
+    }
+    closeLayers(true);
+  }
+
+  /* ------------------------------------------------------------------------
      浮层控制
      ------------------------------------------------------------------------ */
   function lockScroll(locked) {
     document.body.classList.toggle('is-locked', locked);
   }
 
+  function setPageInert(inert) {
+    var regions = [
+      document.querySelector('.topbar'),
+      document.querySelector('main'),
+      document.querySelector('.footer')
+    ];
+    for (var i = 0; i < regions.length; i++) {
+      if (!regions[i]) continue;
+      if (inert) regions[i].setAttribute('inert', '');
+      else regions[i].removeAttribute('inert');
+    }
+  }
+
+  // 表单类浮层优先聚焦第一个输入框，其余聚焦关闭按钮或主按钮
+  function focusLayer(node) {
+    var target = node.querySelector('input, textarea') ||
+      node.querySelector('[data-close]') ||
+      node.querySelector('.btn');
+    if (target) target.focus();
+  }
+
   function showLayer(node, name) {
     if (openLayer) return;
     lastFocused = document.activeElement;
     openLayer = name;
+    openNode = node;
+
+    el.overlay.classList.toggle('is-blurred', name === 'login');
     el.overlay.hidden = false;
     node.hidden = false;
     lockScroll(true);
+    setPageInert(true);
 
     window.requestAnimationFrame(function () {
       el.overlay.classList.add('is-shown');
       node.classList.add('is-open');
     });
 
-    if (name === 'cart') {
-      el.cartButton.setAttribute('aria-expanded', 'true');
-      el.drawer.querySelector('[data-close]').focus();
-    } else {
-      node.querySelector('[data-close], .btn').focus();
-    }
+    if (name === 'cart') el.cartButton.setAttribute('aria-expanded', 'true');
+    focusLayer(node);
   }
 
-  function closeLayers() {
+  // 关掉当前浮层并立刻打开下一个，用于「提示 → 登录 → 地址表单」这类衔接
+  function switchLayer(node, name) {
+    var previous = openNode;
+    var previousName = openLayer;
+    var first = !openLayer;
+
+    if (first) lastFocused = document.activeElement;
+    if (previousName === 'detail' && name !== 'detail') detailProductId = null;
+
+    openLayer = name;
+    openNode = node;
+
+    if (previous && previous !== node) {
+      previous.classList.remove('is-open');
+      window.setTimeout(function () {
+        if (previous !== openNode) previous.hidden = true;
+      }, 300);
+    }
+
+    el.overlay.classList.toggle('is-blurred', name === 'login');
+    el.overlay.hidden = false;
+    node.hidden = false;
+    lockScroll(true);
+    setPageInert(true);
+
+    window.requestAnimationFrame(function () {
+      el.overlay.classList.add('is-shown');
+      node.classList.add('is-open');
+    });
+
+    if (name === 'cart') el.cartButton.setAttribute('aria-expanded', 'true');
+    focusLayer(node);
+  }
+
+  function presentLayer(node, name) {
+    if (openLayer === name && openNode === node) {
+      focusLayer(node);
+      return;
+    }
+    if (openLayer) switchLayer(node, name);
+    else showLayer(node, name);
+  }
+
+  function closeLayers(force) {
     if (!openLayer) return;
+    // 登录浮窗不接受 Esc、遮罩点击和关闭按钮，只能由代码强制关闭
+    if (!force && LOCKED_LAYERS[openLayer]) return;
 
-    var node = null;
-    if (openLayer === 'cart') node = el.drawer;
-    if (openLayer === 'detail') node = el.detailDialog;
-    if (openLayer === 'success') node = el.successDialog;
+    var node = openNode;
+    var layerName = openLayer;
+
     if (node) node.classList.remove('is-open');
-
     el.overlay.classList.remove('is-shown');
+    el.overlay.classList.remove('is-blurred');
     el.cartButton.setAttribute('aria-expanded', 'false');
 
-    var layerName = openLayer;
     openLayer = null;
+    openNode = null;
     lockScroll(false);
+    setPageInert(false);
+    if (layerName === 'detail') detailProductId = null;
 
     window.setTimeout(function () {
       el.overlay.hidden = true;
       if (node) node.hidden = true;
-      if (layerName === 'detail') detailProductId = null;
     }, 320);
 
     if (lastFocused && typeof lastFocused.focus === 'function') {
@@ -575,21 +1213,37 @@
     showLayer(el.detailDialog, 'detail');
   }
 
+  function completeOrder() {
+    if (!cart.length) return;
+
+    var address = defaultAddress();
+    var number = makeOrderNumber();
+    // 先落库再清空购物车，否则订单里没有商品明细
+    recordOrder(number, address);
+
+    el.orderNumber.textContent = number;
+    el.successAddress.textContent = address
+      ? '收货：' + address.name + ' ' + maskPhone(address.phone) + ' · ' +
+        address.region + ' ' + address.detail
+      : '';
+
+    cart = [];
+    renderCart();
+    presentLayer(el.successDialog, 'success');
+  }
+
   function checkout() {
     if (!cart.length) return;
 
-    el.orderNumber.textContent = makeOrderNumber();
-    cart = [];
-    renderCart();
-
-    var wasOpen = openLayer;
-    openLayer = null;
-    if (wasOpen === 'cart') {
-      el.drawer.classList.remove('is-open');
-      el.cartButton.setAttribute('aria-expanded', 'false');
+    if (!isMember()) {
+      requestLogin('checkout');
+      return;
     }
-
-    showLayer(el.successDialog, 'success');
+    if (!addresses.length) {
+      openAddressForm('checkout');
+      return;
+    }
+    completeOrder();
   }
 
   /* ------------------------------------------------------------------------
@@ -636,12 +1290,12 @@
   });
 
   el.checkoutButton.addEventListener('click', checkout);
-  el.successClose.addEventListener('click', closeLayers);
+  el.successClose.addEventListener('click', function () { closeLayers(); });
 
   el.cartButton.addEventListener('click', openCart);
   el.heroCartButton.addEventListener('click', openCart);
 
-  el.overlay.addEventListener('click', closeLayers);
+  el.overlay.addEventListener('click', function () { closeLayers(); });
 
   document.addEventListener('click', function (event) {
     if (event.target.closest('[data-close]')) closeLayers();
@@ -651,10 +1305,80 @@
     if (event.key === 'Escape') closeLayers();
   });
 
+  el.billingButton.addEventListener('click', openBilling);
+
+  el.identityButton.addEventListener('click', function (event) {
+    event.stopPropagation();
+    toggleIdentityMenu();
+  });
+
+  el.identityMenuLogin.addEventListener('click', function () {
+    closeIdentityMenu();
+    openLogin();
+  });
+
+  el.identityMenuBilling.addEventListener('click', function () {
+    closeIdentityMenu();
+    openBilling();
+  });
+
+  el.identityMenuLogout.addEventListener('click', function () {
+    closeIdentityMenu();
+    signOut();
+  });
+
+  document.addEventListener('click', function (event) {
+    if (el.identityMenu.hidden) return;
+    if (event.target.closest('#identityMenu') || event.target.closest('#identityButton')) return;
+    closeIdentityMenu();
+  });
+
+  el.loginForm.addEventListener('submit', handleLogin);
+  el.guestButton.addEventListener('click', enterAsGuest);
+
+  el.noticeLogin.addEventListener('click', openLogin);
+  el.noticeCancel.addEventListener('click', function () {
+    pendingAction = null;
+    closeLayers(true);
+  });
+
+  el.addAddressButton.addEventListener('click', function () {
+    openAddressForm('billing');
+  });
+
+  el.addressForm.addEventListener('submit', handleAddressSubmit);
+
+  el.addressList.addEventListener('click', function (event) {
+    var trigger = event.target.closest('[data-action]');
+    if (!trigger) return;
+
+    var card = trigger.closest('.address-card');
+    if (!card) return;
+
+    if (trigger.dataset.action === 'default') {
+      makeDefaultAddress(card.dataset.id);
+      showToast('已设为默认地址');
+      renderAddressList();
+      return;
+    }
+    if (trigger.dataset.action === 'edit') {
+      openAddressForm('billing', card.dataset.id);
+      return;
+    }
+    if (trigger.dataset.action === 'delete') {
+      deleteAddress(card.dataset.id);
+      showToast('地址已删除');
+      renderAddressList();
+    }
+  });
+
   /* ------------------------------------------------------------------------
      初始化
      ------------------------------------------------------------------------ */
   renderFilters();
   renderGrid();
   renderCart();
+  renderIdentity();
+  // 没有登录态时先过登录浮窗，它不接受 Esc 与遮罩点击
+  if (!auth) openLogin();
 })();

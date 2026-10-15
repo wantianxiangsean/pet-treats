@@ -22,6 +22,19 @@
 
       <nav class="topnav" aria-label="主导航">
         <a class="topnav__link" href="#products">精选零食</a>
+        <button class="topnav__link topnav__button" id="billingButton" type="button"
+                aria-haspopup="dialog" aria-controls="billingDialog">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 8.5A2.5 2.5 0 0 1 6.5 6H18a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6.5A2.5 2.5 0 0 1 4 17.5z"
+                  fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+            <path d="M4 9.5h13M15.5 14.5h3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+          <span class="topnav__label">账单中心</span>
+        </button>
+        <button class="identity" id="identityButton" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="identityMenu">
+          <span class="identity__avatar" id="identityAvatar" aria-hidden="true">游</span>
+          <span class="identity__name" id="identityName">游客</span>
+        </button>
         <button class="cart-button" id="cartButton" type="button" aria-haspopup="dialog" aria-controls="cartDrawer" aria-expanded="false">
           <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M3 5h2.2l1.5 9.2a2 2 0 0 0 2 1.7h7.6a2 2 0 0 0 2-1.6L19.6 8H6.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
@@ -32,6 +45,12 @@
           <span class="cart-button__badge" id="cartBadge" data-empty="true">0</span>
         </button>
       </nav>
+
+      <div class="identity-menu" id="identityMenu" role="menu" aria-labelledby="identityButton" hidden>
+        <button class="identity-menu__item" id="identityMenuLogin" type="button" role="menuitem">登录 / 注册</button>
+        <button class="identity-menu__item" id="identityMenuBilling" type="button" role="menuitem">账单中心</button>
+        <button class="identity-menu__item" id="identityMenuLogout" type="button" role="menuitem">退出登录</button>
+      </div>
     </div>
   </header>
 
@@ -146,8 +165,111 @@
     </div>
     <h2 id="successTitle">下单成功</h2>
     <p class="success__order">订单号 <span id="orderNumber"></span></p>
+    <p class="success__addr" id="successAddress"></p>
     <p class="success__note">零食已经打包，客服会在 24 小时内与你确认配送信息。</p>
     <button class="btn btn--primary" id="successClose" type="button">继续逛逛</button>
+  </div>
+
+  <div class="dialog dialog--login" id="loginDialog" role="dialog" aria-modal="true" aria-labelledby="loginTitle" hidden>
+    <span class="login__mark" aria-hidden="true">LH</span>
+    <h2 id="loginTitle">登录后开始选购</h2>
+    <p class="login__sub">登录后可以下单、填写并管理多个收货地址；也可以先用游客身份逛逛。</p>
+    <form class="form" id="loginForm" novalidate>
+      <div class="field">
+        <label class="field__label" for="loginUser">账号</label>
+        <input class="input" id="loginUser" name="username" type="text" autocomplete="username" placeholder="demo">
+        <p class="field__error" id="loginUserError" hidden></p>
+      </div>
+      <div class="field">
+        <label class="field__label" for="loginPass">密码</label>
+        <input class="input" id="loginPass" name="password" type="password" autocomplete="current-password" placeholder="pet123">
+        <p class="field__error" id="loginPassError" hidden></p>
+      </div>
+      <p class="form__error" id="loginError" role="alert" hidden></p>
+      <button class="btn btn--primary btn--block" id="loginSubmit" type="submit">登录</button>
+    </form>
+    <button class="btn btn--ghost btn--block" id="guestButton" type="button">以游客身份进入</button>
+    <p class="login__hint">演示账号：<strong>demo</strong> / <strong>pet123</strong>，仅用于演示，不是真实账号体系。</p>
+  </div>
+
+  <div class="dialog dialog--billing" id="billingDialog" role="dialog" aria-modal="true" aria-labelledby="billingTitle" hidden>
+    <button class="icon-button dialog__close" type="button" data-close aria-label="关闭账单中心">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+    </button>
+    <header class="billing__head">
+      <h2 id="billingTitle">账单中心</h2>
+      <p class="billing__sub">管理收货地址，查看模拟订单记录。</p>
+    </header>
+    <section class="billing__section" aria-labelledby="addressSectionTitle">
+      <div class="billing__section-head">
+        <h3 id="addressSectionTitle">收货地址</h3>
+        <button class="btn btn--ghost btn--sm" id="addAddressButton" type="button">新增地址</button>
+      </div>
+      <div class="address-list" id="addressList"></div>
+    </section>
+    <section class="billing__section" aria-labelledby="orderSectionTitle">
+      <div class="billing__section-head">
+        <h3 id="orderSectionTitle">订单记录</h3>
+      </div>
+      <div class="order-list" id="orderList"></div>
+    </section>
+  </div>
+
+  <div class="dialog dialog--address" id="addressDialog" role="dialog" aria-modal="true" aria-labelledby="addressTitle" hidden>
+    <button class="icon-button dialog__close" type="button" data-close aria-label="关闭地址表单">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+    </button>
+    <h2 id="addressTitle">填写收货地址</h2>
+    <p class="address__sub" id="addressSub">登录后可以保存多个地址，下单时用默认地址。</p>
+    <form class="form" id="addressForm" novalidate>
+      <div class="field">
+        <label class="field__label" for="addrName">收货人</label>
+        <input class="input" id="addrName" type="text" maxlength="20" autocomplete="name" placeholder="收件人姓名">
+        <p class="field__error" id="addrNameError" hidden></p>
+      </div>
+      <div class="field">
+        <label class="field__label" for="addrPhone">手机号</label>
+        <input class="input" id="addrPhone" type="tel" inputmode="numeric" maxlength="11" autocomplete="tel" placeholder="11 位手机号">
+        <p class="field__error" id="addrPhoneError" hidden></p>
+      </div>
+      <div class="field">
+        <label class="field__label" for="addrRegion">省市区</label>
+        <input class="input" id="addrRegion" type="text" maxlength="40" placeholder="如：浙江省 杭州市 西湖区">
+        <p class="field__error" id="addrRegionError" hidden></p>
+      </div>
+      <div class="field">
+        <label class="field__label" for="addrDetail">详细地址</label>
+        <textarea class="input input--area" id="addrDetail" rows="2" maxlength="80" placeholder="街道、门牌号、楼层"></textarea>
+        <p class="field__error" id="addrDetailError" hidden></p>
+      </div>
+      <label class="checkbox">
+        <input type="checkbox" id="addrDefault">
+        <span>设为默认地址</span>
+      </label>
+      <div class="form__actions">
+        <button class="btn btn--ghost" type="button" data-close>取消</button>
+        <button class="btn btn--primary" id="addressSubmit" type="submit">保存地址</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="dialog dialog--notice" id="noticeDialog" role="dialog" aria-modal="true" aria-labelledby="noticeTitle" hidden>
+    <span class="notice__mark" aria-hidden="true">
+      <svg class="icon" viewBox="0 0 24 24">
+        <path d="M7 10V8a5 5 0 0 1 10 0v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        <rect x="4.5" y="10" width="15" height="10.5" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/>
+      </svg>
+    </span>
+    <h2 id="noticeTitle">需要先登录</h2>
+    <p class="notice__note" id="noticeNote">登录后才能下单并填写收货地址。</p>
+    <div class="notice__actions">
+      <button class="btn btn--primary" id="noticeLogin" type="button">去登录</button>
+      <button class="btn btn--ghost" id="noticeCancel" type="button">先逛逛</button>
+    </div>
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
