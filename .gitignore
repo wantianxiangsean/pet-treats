@@ -1,0 +1,44 @@
+# 操作系统生成的杂项文件
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+.DS_Store
+._*
+
+# 编辑器与 IDE 的本地配置
+.vscode/
+.idea/
+*.suo
+*.user
+*.swp
+*.swo
+*~
+
+# 日志与临时文件
+*.log
+*.tmp
+*.temp
+*.bak
+.cache/
+
+# 依赖与构建产物（本站是纯静态页面，本来就没有，留着防止以后误提交）
+node_modules/
+dist/
+build/
+out/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# 本地环境变量
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# 本机预览用的辅助文件
+*.code-workspace
+serve.*

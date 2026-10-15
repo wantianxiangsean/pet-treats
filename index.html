@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>岚禾小食 · 天然宠物零食</title>
+  <meta name="description" content="岚禾小食 NATURAL PET TREATS：单一原料、低温慢制的天然宠物零食，适合日常奖励、训练与陪伴。">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#products">跳到精选零食</a>
+
+  <header class="topbar" id="top">
+    <div class="topbar__inner">
+      <a class="brand" href="#top">
+        <span class="brand__mark" aria-hidden="true">LH</span>
+        <span class="brand__text">
+          <strong>岚禾小食</strong>
+          <small>NATURAL PET TREATS</small>
+        </span>
+      </a>
+
+      <nav class="topnav" aria-label="主导航">
+        <a class="topnav__link" href="#products">精选零食</a>
+        <button class="cart-button" id="cartButton" type="button" aria-haspopup="dialog" aria-controls="cartDrawer" aria-expanded="false">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 5h2.2l1.5 9.2a2 2 0 0 0 2 1.7h7.6a2 2 0 0 0 2-1.6L19.6 8H6.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="9.5" cy="19.5" r="1.4" fill="currentColor"/>
+            <circle cx="16.5" cy="19.5" r="1.4" fill="currentColor"/>
+          </svg>
+          <span class="cart-button__label">购物车</span>
+          <span class="cart-button__badge" id="cartBadge" data-empty="true">0</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" aria-labelledby="heroTitle">
+      <div class="hero__copy">
+        <p class="eyebrow">单一原料 · 低温慢制 · 日常奖励</p>
+        <h1 id="heroTitle">给毛孩子一口干净、真实的好味道</h1>
+        <p class="hero__lead">
+          岚禾小食只做看得懂成分的零食：原料表短、工艺慢、不靠诱食剂讨好鼻子。
+          风干、冻干、烘焙三条线，从日常奖励到训练陪伴，都能挑到合适的一口。
+        </p>
+        <div class="hero__actions">
+          <a class="btn btn--primary" href="#products">选购零食</a>
+          <button class="btn btn--ghost" id="heroCartButton" type="button">查看购物车</button>
+        </div>
+        <ul class="hero__facts">
+          <li><strong>8 款</strong><span>在售零食</span></li>
+          <li><strong>4 类</strong><span>风干与冻干</span></li>
+          <li><strong>72h</strong><span>低温慢烘</span></li>
+        </ul>
+      </div>
+
+      <div class="hero__media">
+        <img src="assets/images/hero-natural-pet-treats.jpg" width="1200" height="900"
+             alt="浅色木桌上摆着几碟天然宠物零食，一只小型犬和一只猫安静地待在旁边" fetchpriority="high">
+      </div>
+    </section>
+
+    <section class="section" id="products" aria-labelledby="productsTitle">
+      <div class="section__head">
+        <div>
+          <h2 id="productsTitle">精选零食</h2>
+          <p class="section__lead">按类别挑，每一款都写了原料和适用宠物。价格与月销量都标在卡片上。</p>
+        </div>
+        <div class="filters" id="filters" role="group" aria-label="按分类筛选零食"></div>
+      </div>
+
+      <div class="product-grid" id="productGrid"></div>
+      <p class="grid-empty" id="gridEmpty" hidden>这个分类暂时还没有上架零食，换个分类看看。</p>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <div class="footer__inner">
+      <div class="footer__brand">
+        <span class="brand__mark" aria-hidden="true">LH</span>
+        <div>
+          <strong>岚禾小食</strong>
+          <small>NATURAL PET TREATS</small>
+        </div>
+      </div>
+      <p class="footer__note">
+        本页面为前端演示站点，商品、价格与销量均为演示数据，下单流程在前端模拟完成，
+        不涉及真实支付、库存与配送。
+      </p>
+      <p class="footer__copy">© 2026 岚禾小食 · 宠物零食</p>
+    </div>
+  </footer>
+
+  <div class="overlay" id="overlay" hidden></div>
+
+  <aside class="drawer" id="cartDrawer" role="dialog" aria-modal="true" aria-labelledby="cartTitle" hidden>
+    <header class="drawer__head">
+      <h2 id="cartTitle">购物车</h2>
+      <button class="icon-button" type="button" data-close aria-label="关闭购物车">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </header>
+    <div class="drawer__body" id="cartItems"></div>
+    <footer class="drawer__foot" id="cartFoot" hidden>
+      <div class="cart-summary">
+        <span id="cartCountLabel">共 0 件</span>
+        <strong id="cartTotal">¥0</strong>
+      </div>
+      <button class="btn btn--primary btn--block" id="checkoutButton" type="button">提交订单</button>
+    </footer>
+  </aside>
+
+  <div class="dialog dialog--detail" id="detailDialog" role="dialog" aria-modal="true" aria-labelledby="detailName" hidden>
+    <button class="icon-button dialog__close" type="button" data-close aria-label="关闭商品详情">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+    </button>
+    <div class="dialog__media">
+      <img id="detailImage" src="" alt="" width="800" height="600">
+    </div>
+    <div class="dialog__body">
+      <p class="dialog__category" id="detailCategory"></p>
+      <h2 id="detailName"></h2>
+      <p class="dialog__price" id="detailPrice"></p>
+      <p class="dialog__desc" id="detailDesc"></p>
+      <dl class="spec-list">
+        <div><dt>规格</dt><dd id="detailSpec"></dd></div>
+        <div><dt>主要成分</dt><dd id="detailIngredients"></dd></div>
+        <div><dt>适用宠物</dt><dd id="detailSuitable"></dd></div>
+        <div><dt>月销量</dt><dd id="detailSales"></dd></div>
+      </dl>
+      <button class="btn btn--primary btn--block" id="detailAdd" type="button">加入购物车</button>
+    </div>
+  </div>
+
+  <div class="dialog dialog--success" id="successDialog" role="dialog" aria-modal="true" aria-labelledby="successTitle" hidden>
+    <div class="success-mark" aria-hidden="true">
+      <svg class="icon" viewBox="0 0 24 24">
+        <path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <h2 id="successTitle">下单成功</h2>
+    <p class="success__order">订单号 <span id="orderNumber"></span></p>
+    <p class="success__note">零食已经打包，客服会在 24 小时内与你确认配送信息。</p>
+    <button class="btn btn--primary" id="successClose" type="button">继续逛逛</button>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
